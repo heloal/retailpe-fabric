@@ -64,7 +64,7 @@
 
 fecha_proceso = ""
 id_ejecucion = "manual"
-pct_max_tienda_desconocida = 5.0
+pct_max_tienda_desconocida = 3.0
 dias_frescura = 3
 
 # METADATA ********************
