@@ -1,0 +1,239 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": "IF OBJECT_ID('dbo.log_ejecucion') IS NULL\nBEGIN\nCREATE TABLE dbo.log_ejecucion (\n    id_ejecucion   VARCHAR(64)   NOT NULL,   -- @pipeline().RunId del orquestador\n    pipeline       VARCHAR(100)  NOT NULL,\n    fecha_proceso  VARCHAR(10)   NULL,       -- fecha congelada por el orquestador (hora de Lima)\n    estado         VARCHAR(20)   NOT NULL,   -- EnCurso | Succeeded | Failed\n    inicio         DATETIME2(6)  NOT NULL,\n    fin            DATETIME2(6)  NULL,\n    duracion_seg   INT           NULL,\n    mensaje        VARCHAR(4000) NULL\n)\nEND\nIF OBJECT_ID('dbo.log_actividad') IS NULL\nBEGIN\nCREATE TABLE dbo.log_actividad (\n    id_ejecucion      VARCHAR(64)   NOT NULL,\n    actividad         VARCHAR(100)  NOT NULL,\n    estado            VARCHAR(20)   NOT NULL,\n    filas_leidas      BIGINT        NULL,\n    filas_escritas    BIGINT        NULL,\n    filas_cuarentena  BIGINT        NULL,\n    detalle_json      VARCHAR(4000) NULL,\n    registrado_en     DATETIME2(6)  NOT NULL\n)\nEND\nIF OBJECT_ID('dbo.log_error') IS NULL\nBEGIN\nCREATE TABLE dbo.log_error (\n    id_ejecucion   VARCHAR(64)   NOT NULL,\n    pipeline       VARCHAR(100)  NOT NULL,\n    mensaje_error  VARCHAR(4000) NULL,\n    registrado_en  DATETIME2(6)  NOT NULL\n)\nEND",
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Bloque1_Tablas",
+        "dependsOn": []
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": "CREATE OR ALTER PROCEDURE dbo.sp_log_inicio\n    @id_ejecucion  VARCHAR(64),\n    @pipeline      VARCHAR(100),\n    @fecha_proceso VARCHAR(10)\nAS\nBEGIN\n    -- Idempotente: si el orquestador se re-ejecuta con el mismo RunId (no deberia), no duplica\n    DELETE FROM dbo.log_ejecucion WHERE id_ejecucion = @id_ejecucion;\n    INSERT INTO dbo.log_ejecucion (id_ejecucion, pipeline, fecha_proceso, estado, inicio)\n    VALUES (@id_ejecucion, @pipeline, @fecha_proceso, 'EnCurso', SYSUTCDATETIME());\nEND;",
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Bloque2_Proc",
+        "dependsOn": [
+          {
+            "activity": "Bloque1_Tablas",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": "CREATE OR ALTER PROCEDURE dbo.sp_log_actividad\n    @id_ejecucion     VARCHAR(64),\n    @actividad        VARCHAR(100),\n    @filas_leidas     BIGINT,\n    @filas_escritas   BIGINT,\n    @filas_cuarentena BIGINT,\n    @detalle_json     VARCHAR(8000)\nAS\nBEGIN\n    -- Idempotente: un reintento de la actividad reemplaza su fila, no agrega otra\n    DELETE FROM dbo.log_actividad WHERE id_ejecucion = @id_ejecucion AND actividad = @actividad;\n    INSERT INTO dbo.log_actividad\n        (id_ejecucion, actividad, estado, filas_leidas, filas_escritas, filas_cuarentena, detalle_json, registrado_en)\n    VALUES\n        (@id_ejecucion, @actividad, 'Succeeded', @filas_leidas, @filas_escritas, @filas_cuarentena,\n         LEFT(@detalle_json, 4000), SYSUTCDATETIME());\nEND;",
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Bloque3_Proc",
+        "dependsOn": [
+          {
+            "activity": "Bloque2_Proc",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": "CREATE OR ALTER PROCEDURE dbo.sp_log_fin\n    @id_ejecucion VARCHAR(64),\n    @estado       VARCHAR(20),\n    @mensaje      VARCHAR(8000)\nAS\nBEGIN\n    UPDATE dbo.log_ejecucion\n    SET estado       = @estado,\n        fin          = SYSUTCDATETIME(),\n        duracion_seg = DATEDIFF(SECOND, inicio, SYSUTCDATETIME()),\n        mensaje      = LEFT(@mensaje, 4000)\n    WHERE id_ejecucion = @id_ejecucion;\n\n    IF @estado = 'Failed'\n        INSERT INTO dbo.log_error (id_ejecucion, pipeline, mensaje_error, registrado_en)\n        SELECT id_ejecucion, pipeline, LEFT(@mensaje, 4000), SYSUTCDATETIME()\n        FROM dbo.log_ejecucion WHERE id_ejecucion = @id_ejecucion;\nEND;",
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Bloque4_Proc",
+        "dependsOn": [
+          {
+            "activity": "Bloque3_Proc",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": "EXEC dbo.sp_log_inicio 'prueba-001', 'prueba_manual', '2026-08-15';\nEXEC dbo.sp_log_actividad 'prueba-001', 'nb_silver_ventas', 100, 95, 5, '{\"filas_leidas\": 100}';\nEXEC dbo.sp_log_fin 'prueba-001', 'Succeeded', '';\nSELECT e.estado, a.filas_leidas, a.filas_escritas, a.filas_cuarentena FROM dbo.log_ejecucion e JOIN dbo.log_actividad a ON a.id_ejecucion = e.id_ejecucion WHERE e.id_ejecucion = 'prueba-001';",
+              "type": "Query"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Bloque5_Prueba",
+        "dependsOn": [
+          {
+            "activity": "Bloque4_Proc",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": "DELETE FROM dbo.log_actividad WHERE id_ejecucion = 'prueba-001';\nDELETE FROM dbo.log_ejecucion WHERE id_ejecucion = 'prueba-001';",
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Bloque5_Limpieza",
+        "dependsOn": [
+          {
+            "activity": "Bloque5_Prueba",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

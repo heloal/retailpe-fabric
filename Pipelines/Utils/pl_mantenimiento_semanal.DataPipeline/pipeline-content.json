@@ -1,0 +1,39 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "7f03f67d-1f41-bfb0-4306-12328215e146",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {}
+        },
+        "policy": {
+          "timeout": "0.02:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 120,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_mantenimiento",
+        "dependsOn": []
+      },
+      {
+        "type": "Wait",
+        "typeProperties": {
+          "waitTimeInSeconds": 1
+        },
+        "name": "Alerta_Mant",
+        "description": "REEMPLAZAR por Office 365 Outlook. Subject=@concat('[RetailPe][MANTENIMIENTO] fallo - ', utcNow())",
+        "dependsOn": [
+          {
+            "activity": "nb_mantenimiento",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

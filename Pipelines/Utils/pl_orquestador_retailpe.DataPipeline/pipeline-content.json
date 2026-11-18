@@ -1,0 +1,324 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "SetVariable",
+        "typeProperties": {
+          "variableName": "v_fecha_proceso",
+          "value": {
+            "value": "@if(empty(pipeline().parameters.fecha_proceso), formatDateTime(convertFromUtc(utcNow(), 'SA Pacific Standard Time'), 'yyyy-MM-dd'), pipeline().parameters.fecha_proceso)",
+            "type": "Expression"
+          }
+        },
+        "name": "Set_FechaProceso",
+        "dependsOn": []
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "EXEC dbo.sp_log_inicio '@{pipeline().RunId}', 'pl_orquestador_retailpe', '@{variables('v_fecha_proceso')}'",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Script_LogInicio",
+        "dependsOn": [
+          {
+            "activity": "Set_FechaProceso",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "8cbe7fbf-076d-aac2-4e69-245ed955e802",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "fecha_proceso": {
+              "value": "@variables('v_fecha_proceso')",
+              "type": "Expression"
+            },
+            "id_orquestacion": {
+              "value": "@pipeline().RunId",
+              "type": "Expression"
+            },
+            "fecha_inicio_backfill": {
+              "value": "@pipeline().parameters.fecha_inicio_backfill",
+              "type": "Expression"
+            },
+            "simular_fallo": {
+              "value": "@pipeline().parameters.simular_fallo",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "name": "Ejecutar_Maestro",
+        "dependsOn": [
+          {
+            "activity": "Script_LogInicio",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "EXEC dbo.sp_log_fin '@{pipeline().RunId}', 'Succeeded', ''",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Script_LogFin_OK",
+        "dependsOn": [
+          {
+            "activity": "Ejecutar_Maestro",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Lookup",
+        "typeProperties": {
+          "source": {
+            "type": "DataWarehouseSource",
+            "sqlReaderQuery": {
+              "value": "SELECT ISNULL(SUM(filas_cuarentena), 0) AS total FROM dbo.log_actividad WHERE id_ejecucion = '@{pipeline().RunId}'",
+              "type": "Expression"
+            },
+            "partitionOption": "None",
+            "queryTimeout": "02:00:00"
+          },
+          "datasetSettings": {
+            "type": "DataWarehouseTable",
+            "schema": [],
+            "linkedService": {
+              "name": "wh_control",
+              "properties": {
+                "type": "DataWarehouse",
+                "typeProperties": {
+                  "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+                  "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+                  "workspaceId": "00000000-0000-0000-0000-000000000000"
+                },
+                "annotations": []
+              }
+            },
+            "annotations": []
+          },
+          "firstRowOnly": true
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Lookup_Cuarentena",
+        "dependsOn": [
+          {
+            "activity": "Script_LogFin_OK",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "value": "@greater(int(activity('Lookup_Cuarentena').output.firstRow.total), pipeline().parameters.umbral_cuarentena)",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "type": "Wait",
+              "typeProperties": {
+                "waitTimeInSeconds": 1
+              },
+              "name": "Alerta_Calidad",
+              "description": "REEMPLAZAR por Office 365 Outlook. To=@pipeline().parameters.correo_alertas. Subject=@concat('[RetailPe][CALIDAD] ', string(activity('Lookup_Cuarentena').output.firstRow.total), ' ventas a cuarentena - ', variables('v_fecha_proceso'))",
+              "dependsOn": []
+            }
+          ],
+          "ifFalseActivities": []
+        },
+        "name": "If_Cuarentena_Alta",
+        "dependsOn": [
+          {
+            "activity": "Lookup_Cuarentena",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "EXEC dbo.sp_log_fin '@{pipeline().RunId}', 'Failed',\n    '@{replace(activity('Ejecutar_Maestro').error.message, '''', '''''')}'",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Script_LogFin_Error",
+        "dependsOn": [
+          {
+            "activity": "Ejecutar_Maestro",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Wait",
+        "typeProperties": {
+          "waitTimeInSeconds": 1
+        },
+        "name": "Alerta_Fallo",
+        "description": "REEMPLAZAR por Office 365 Outlook. To=@pipeline().parameters.correo_alertas. Subject=@concat('[RetailPe][FALLO] pl_maestro_retailpe - ', variables('v_fecha_proceso'))",
+        "dependsOn": [
+          {
+            "activity": "Script_LogFin_Error",
+            "dependencyConditions": [
+              "Completed"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Fail",
+        "typeProperties": {
+          "message": {
+            "value": "@concat('pl_maestro_retailpe fallo: ', activity('Ejecutar_Maestro').error.message)",
+            "type": "Expression"
+          },
+          "errorCode": "RETAILPE_MAESTRO_FALLO"
+        },
+        "name": "Fail_Orquestador",
+        "dependsOn": [
+          {
+            "activity": "Alerta_Fallo",
+            "dependencyConditions": [
+              "Completed"
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "fecha_proceso": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "fecha_inicio_backfill": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "simular_fallo": {
+        "type": "bool",
+        "defaultValue": false
+      },
+      "umbral_cuarentena": {
+        "type": "int",
+        "defaultValue": 50
+      },
+      "correo_alertas": {
+        "type": "string",
+        "defaultValue": "hector@datawizard.tech"
+      }
+    },
+    "variables": {
+      "v_fecha_proceso": {
+        "type": "String"
+      }
+    }
+  }
+}

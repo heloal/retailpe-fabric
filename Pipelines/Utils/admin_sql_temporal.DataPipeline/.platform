@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "admin_sql_temporal"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "bd4daa1d-bd72-802e-4265-2c119a0bd7d3"
+  }
+}

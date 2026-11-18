@@ -1,0 +1,430 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "Lookup",
+        "typeProperties": {
+          "source": {
+            "type": "DataWarehouseSource",
+            "sqlReaderQuery": "SELECT * FROM control_ingestas WHERE activo = 'SI'",
+            "partitionOption": "None",
+            "queryTimeout": "02:00:00"
+          },
+          "datasetSettings": {
+            "type": "DataWarehouseTable",
+            "schema": [],
+            "linkedService": {
+              "name": "wh_control",
+              "properties": {
+                "type": "DataWarehouse",
+                "typeProperties": {
+                  "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+                  "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+                  "workspaceId": "00000000-0000-0000-0000-000000000000"
+                },
+                "annotations": []
+              }
+            },
+            "annotations": []
+          },
+          "firstRowOnly": false
+        },
+        "policy": {
+          "timeout": "0.02:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Lookup_Ingestas",
+        "dependsOn": []
+      },
+      {
+        "type": "ForEach",
+        "typeProperties": {
+          "isSequential": true,
+          "items": {
+            "value": "@activity('Lookup_Ingestas').output.value",
+            "type": "Expression"
+          },
+          "activities": [
+            {
+              "type": "Lookup",
+              "typeProperties": {
+                "source": {
+                  "type": "DataWarehouseSource",
+                  "sqlReaderQuery": {
+                    "value": "SELECT * FROM control_conexiones WHERE id_conexion = '@{item().id_conexion}'",
+                    "type": "Expression"
+                  },
+                  "partitionOption": "None",
+                  "queryTimeout": "02:00:00"
+                },
+                "datasetSettings": {
+                  "type": "DataWarehouseTable",
+                  "schema": [],
+                  "linkedService": {
+                    "name": "wh_control",
+                    "properties": {
+                      "type": "DataWarehouse",
+                      "typeProperties": {
+                        "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+                        "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+                        "workspaceId": "00000000-0000-0000-0000-000000000000"
+                      },
+                      "annotations": []
+                    }
+                  },
+                  "annotations": []
+                },
+                "firstRowOnly": true
+              },
+              "policy": {
+                "timeout": "0.02:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Lookup_Conexion",
+              "dependsOn": []
+            },
+            {
+              "type": "Switch",
+              "typeProperties": {
+                "on": {
+                  "value": "@activity('Lookup_Conexion').output.firstRow.tipo_origen",
+                  "type": "Expression"
+                },
+                "cases": [
+                  {
+                    "value": "SQL",
+                    "activities": [
+                      {
+                        "type": "Copy",
+                        "typeProperties": {
+                          "source": {
+                            "type": "AzureSqlSource",
+                            "sqlReaderQuery": {
+                              "value": "SELECT * FROM @{item().objeto_origen}",
+                              "type": "Expression"
+                            },
+                            "partitionOption": "None",
+                            "queryTimeout": "02:00:00",
+                            "datasetSettings": {
+                              "type": "AzureSqlTable",
+                              "typeProperties": {
+                                "database": "bdacademy"
+                              },
+                              "schema": [],
+                              "externalReferences": {
+                                "connection": "5e4c284b-7d93-4301-a8f1-2e434208b64e"
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "sink": {
+                            "type": "LakehouseTableSink",
+                            "tableActionOption": "Overwrite",
+                            "datasetSettings": {
+                              "type": "LakehouseTable",
+                              "typeProperties": {
+                                "table": {
+                                  "value": "@item().tabla_destino",
+                                  "type": "Expression"
+                                }
+                              },
+                              "schema": [],
+                              "linkedService": {
+                                "name": "lh_bronze",
+                                "properties": {
+                                  "type": "Lakehouse",
+                                  "typeProperties": {
+                                    "artifactId": "d7cfbaf8-11fb-baa7-413c-a19aade212a5",
+                                    "workspaceId": "00000000-0000-0000-0000-000000000000",
+                                    "rootFolder": "Tables"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          },
+                          "enableStaging": false
+                        },
+                        "policy": {
+                          "timeout": "0.02:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Copy_SQL_Generico",
+                        "dependsOn": []
+                      }
+                    ]
+                  },
+                  {
+                    "value": "CSV",
+                    "activities": [
+                      {
+                        "type": "Copy",
+                        "typeProperties": {
+                          "source": {
+                            "type": "DelimitedTextSource",
+                            "formatSettings": {
+                              "type": "DelimitedTextReadSettings"
+                            },
+                            "storeSettings": {
+                              "type": "LakehouseReadSettings",
+                              "recursive": true
+                            },
+                            "datasetSettings": {
+                              "type": "DelimitedText",
+                              "typeProperties": {
+                                "location": {
+                                  "type": "LakehouseLocation",
+                                  "folderPath": "raw",
+                                  "fileName": {
+                                    "value": "@item().objeto_origen",
+                                    "type": "Expression"
+                                  }
+                                },
+                                "columnDelimiter": ",",
+                                "quoteChar": "\"",
+                                "escapeChar": "\\",
+                                "firstRowAsHeader": true
+                              },
+                              "schema": [],
+                              "linkedService": {
+                                "name": "lh_bronze",
+                                "properties": {
+                                  "type": "Lakehouse",
+                                  "typeProperties": {
+                                    "artifactId": "d7cfbaf8-11fb-baa7-413c-a19aade212a5",
+                                    "workspaceId": "00000000-0000-0000-0000-000000000000",
+                                    "rootFolder": "Files"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "sink": {
+                            "type": "LakehouseTableSink",
+                            "tableActionOption": "Overwrite",
+                            "datasetSettings": {
+                              "type": "LakehouseTable",
+                              "typeProperties": {
+                                "table": {
+                                  "value": "@item().tabla_destino",
+                                  "type": "Expression"
+                                }
+                              },
+                              "schema": [],
+                              "linkedService": {
+                                "name": "lh_bronze",
+                                "properties": {
+                                  "type": "Lakehouse",
+                                  "typeProperties": {
+                                    "artifactId": "d7cfbaf8-11fb-baa7-413c-a19aade212a5",
+                                    "workspaceId": "00000000-0000-0000-0000-000000000000",
+                                    "rootFolder": "Tables"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          },
+                          "enableStaging": false
+                        },
+                        "policy": {
+                          "timeout": "0.02:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Copy_CSV_Generico",
+                        "dependsOn": []
+                      }
+                    ]
+                  },
+                  {
+                    "value": "API_REST",
+                    "activities": [
+                      {
+                        "type": "Copy",
+                        "typeProperties": {
+                          "source": {
+                            "type": "RestSource",
+                            "requestMethod": "GET",
+                            "additionalHeaders": {
+                              "x-functions-key": {
+                                "value": "@pipeline().parameters.api_key",
+                                "type": "Expression"
+                              }
+                            },
+                            "paginationRules": {
+                              "supportRFC5988": "true"
+                            },
+                            "httpRequestTimeout": "00:01:40",
+                            "requestInterval": "00.00:00:00.010",
+                            "datasetSettings": {
+                              "type": "RestResource",
+                              "typeProperties": {
+                                "relativeUrl": {
+                                  "value": "@item().objeto_origen",
+                                  "type": "Expression"
+                                }
+                              },
+                              "schema": [],
+                              "externalReferences": {
+                                "connection": "1bce8975-a2d3-4ca8-903d-df6168d7161d"
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "sink": {
+                            "type": "LakehouseTableSink",
+                            "tableActionOption": "Overwrite",
+                            "datasetSettings": {
+                              "type": "LakehouseTable",
+                              "typeProperties": {
+                                "table": {
+                                  "value": "@item().tabla_destino",
+                                  "type": "Expression"
+                                }
+                              },
+                              "schema": [],
+                              "linkedService": {
+                                "name": "lh_bronze",
+                                "properties": {
+                                  "type": "Lakehouse",
+                                  "typeProperties": {
+                                    "artifactId": "d7cfbaf8-11fb-baa7-413c-a19aade212a5",
+                                    "workspaceId": "00000000-0000-0000-0000-000000000000",
+                                    "rootFolder": "Tables"
+                                  },
+                                  "annotations": []
+                                }
+                              },
+                              "annotations": []
+                            }
+                          },
+                          "translator": {
+                            "value": "@if(equals(item().objeto_origen, '/api/productos'), json('{\"type\":\"TabularTranslator\",\"mapComplexValuesToString\":true,\"mappings\":[{\"source\":{\"path\":\"$[''data'']\"},\"sink\":{\"name\":\"data\",\"type\":\"String\"}},{\"source\":{\"path\":\"$[''total'']\"},\"sink\":{\"name\":\"total\",\"type\":\"Int32\"}}]}'), json('{\"type\":\"TabularTranslator\"}'))",
+                            "type": "Expression"
+                          },
+                          "enableStaging": false
+                        },
+                        "policy": {
+                          "timeout": "0.02:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Copy_API_Generico",
+                        "dependsOn": []
+                      }
+                    ]
+                  }
+                ],
+                "defaultActivities": []
+              },
+              "name": "Switch_TipoOrigen",
+              "dependsOn": [
+                {
+                  "activity": "Lookup_Conexion",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Script",
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "text": {
+                      "value": "IF EXISTS (SELECT 1 FROM control_watermarks WHERE id_ingesta = '@{item().id_ingesta}')\n    UPDATE control_watermarks SET ultimo_watermark = CONVERT(VARCHAR(50), SYSUTCDATETIME()),\n           actualizado_en = SYSUTCDATETIME()\n    WHERE id_ingesta = '@{item().id_ingesta}'\nELSE\n    INSERT INTO control_watermarks (id_ingesta, ultimo_watermark, actualizado_en)\n    VALUES ('@{item().id_ingesta}', CONVERT(VARCHAR(50), SYSUTCDATETIME()), SYSUTCDATETIME())",
+                      "type": "Expression"
+                    },
+                    "type": "NonQuery"
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "02:00:00"
+              },
+              "linkedService": {
+                "name": "wh_control",
+                "properties": {
+                  "type": "DataWarehouse",
+                  "typeProperties": {
+                    "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+                    "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+                    "workspaceId": "00000000-0000-0000-0000-000000000000"
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.02:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Script_Watermark",
+              "dependsOn": [
+                {
+                  "activity": "Switch_TipoOrigen",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "name": "ForEach_Ingestas",
+        "dependsOn": [
+          {
+            "activity": "Lookup_Ingestas",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "api_key": {
+        "type": "securestring",
+        "defaultValue": {
+          "type": "SecureString",
+          "value": "**********"
+        }
+      }
+    }
+  }
+}

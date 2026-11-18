@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "admin_setup_logging_s11"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "4f29eb20-3892-960a-41a7-63362ac57904"
+  }
+}

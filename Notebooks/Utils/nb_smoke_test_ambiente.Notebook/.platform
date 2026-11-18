@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "nb_smoke_test_ambiente"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "3ff0acae-c839-90b2-432c-e65b6073b07d"
+  }
+}

@@ -1,0 +1,571 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "SetVariable",
+        "typeProperties": {
+          "variableName": "v_fecha_proceso",
+          "value": {
+            "value": "@if(empty(pipeline().parameters.fecha_proceso), formatDateTime(convertFromUtc(utcNow(), 'SA Pacific Standard Time'), 'yyyy-MM-dd'), pipeline().parameters.fecha_proceso)",
+            "type": "Expression"
+          }
+        },
+        "name": "Set_FechaProceso",
+        "dependsOn": []
+      },
+      {
+        "type": "SetVariable",
+        "typeProperties": {
+          "variableName": "v_id_ejecucion",
+          "value": {
+            "value": "@if(empty(pipeline().parameters.id_orquestacion), pipeline().RunId, pipeline().parameters.id_orquestacion)",
+            "type": "Expression"
+          }
+        },
+        "name": "Set_IdEjecucion",
+        "dependsOn": [
+          {
+            "activity": "Set_FechaProceso",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "aa1c6f4b-8403-aed1-46b0-ec986a91f08c",
+            "type": "PipelineReference"
+          },
+          "parameters": {},
+          "waitOnCompletion": true
+        },
+        "name": "Ejecutar_Bronze",
+        "dependsOn": [
+          {
+            "activity": "Set_IdEjecucion",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "9050e867-e99e-9e7a-4e66-b303b9d8dc07",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "fecha_proceso": {
+              "value": {
+                "value": "@variables('v_fecha_proceso')",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "id_ejecucion": {
+              "value": {
+                "value": "@variables('v_id_ejecucion')",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "fecha_inicio_backfill": {
+              "value": {
+                "value": "@pipeline().parameters.fecha_inicio_backfill",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "simular_fallo": {
+              "value": {
+                "value": "@pipeline().parameters.simular_fallo",
+                "type": "Expression"
+              },
+              "type": "bool"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 120,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_silver_ventas",
+        "dependsOn": [
+          {
+            "activity": "Ejecutar_Bronze",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "18603737-9855-a15b-4a23-1306aea03d01",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "fecha_proceso": {
+              "value": {
+                "value": "@variables('v_fecha_proceso')",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "id_ejecucion": {
+              "value": {
+                "value": "@variables('v_id_ejecucion')",
+                "type": "Expression"
+              },
+              "type": "string"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 120,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_silver_clientes",
+        "dependsOn": [
+          {
+            "activity": "Ejecutar_Bronze",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "1b3348de-8d14-92e9-4923-46a03bb81910",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "fecha_proceso": {
+              "value": {
+                "value": "@variables('v_fecha_proceso')",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "id_ejecucion": {
+              "value": {
+                "value": "@variables('v_id_ejecucion')",
+                "type": "Expression"
+              },
+              "type": "string"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 120,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_silver_productos_tc",
+        "dependsOn": [
+          {
+            "activity": "Ejecutar_Bronze",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "1020371d-54f0-ba9c-4e8d-6c14006ed33e",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {}
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 120,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_gold_star_schema",
+        "dependsOn": [
+          {
+            "activity": "nb_silver_ventas",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          },
+          {
+            "activity": "nb_silver_clientes",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          },
+          {
+            "activity": "nb_silver_productos_tc",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "52cba1e4-080b-85b1-414a-6966ba64b363",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {}
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 120,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_gold_agregados",
+        "dependsOn": [
+          {
+            "activity": "nb_gold_star_schema",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "EXEC dbo.sp_log_actividad\n    '@{variables('v_id_ejecucion')}',\n    'nb_silver_ventas',\n    @{json(activity('nb_silver_ventas').output.result.exitValue).filas_leidas},\n    @{json(activity('nb_silver_ventas').output.result.exitValue).filas_escritas},\n    @{json(activity('nb_silver_ventas').output.result.exitValue).filas_cuarentena},\n    '@{replace(activity('nb_silver_ventas').output.result.exitValue, '''', '''''')}'",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Log_ventas",
+        "dependsOn": [
+          {
+            "activity": "nb_silver_ventas",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "EXEC dbo.sp_log_actividad\n    '@{variables('v_id_ejecucion')}',\n    'nb_silver_clientes',\n    @{json(activity('nb_silver_clientes').output.result.exitValue).filas_leidas},\n    @{json(activity('nb_silver_clientes').output.result.exitValue).filas_escritas},\n    @{json(activity('nb_silver_clientes').output.result.exitValue).filas_cuarentena},\n    '@{replace(activity('nb_silver_clientes').output.result.exitValue, '''', '''''')}'",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Log_clientes",
+        "dependsOn": [
+          {
+            "activity": "nb_silver_clientes",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "EXEC dbo.sp_log_actividad\n    '@{variables('v_id_ejecucion')}',\n    'nb_silver_productos_tc',\n    @{json(activity('nb_silver_productos_tc').output.result.exitValue).filas_leidas},\n    @{json(activity('nb_silver_productos_tc').output.result.exitValue).filas_escritas},\n    @{json(activity('nb_silver_productos_tc').output.result.exitValue).filas_cuarentena},\n    '@{replace(activity('nb_silver_productos_tc').output.result.exitValue, '''', '''''')}'",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Log_productos_tc",
+        "dependsOn": [
+          {
+            "activity": "nb_silver_productos_tc",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "EXEC dbo.sp_log_actividad\n    '@{variables('v_id_ejecucion')}',\n    'nb_gold_star_schema',\n    @{json(activity('nb_gold_star_schema').output.result.exitValue).filas_leidas},\n    @{json(activity('nb_gold_star_schema').output.result.exitValue).filas_escritas},\n    @{json(activity('nb_gold_star_schema').output.result.exitValue).filas_cuarentena},\n    '@{replace(activity('nb_gold_star_schema').output.result.exitValue, '''', '''''')}'",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Log_star",
+        "dependsOn": [
+          {
+            "activity": "nb_gold_star_schema",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "EXEC dbo.sp_log_actividad\n    '@{variables('v_id_ejecucion')}',\n    'nb_gold_agregados',\n    @{json(activity('nb_gold_agregados').output.result.exitValue).filas_leidas},\n    @{json(activity('nb_gold_agregados').output.result.exitValue).filas_escritas},\n    @{json(activity('nb_gold_agregados').output.result.exitValue).filas_cuarentena},\n    '@{replace(activity('nb_gold_agregados').output.result.exitValue, '''', '''''')}'",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Log_agregados",
+        "dependsOn": [
+          {
+            "activity": "nb_gold_agregados",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "62f7b5e1-6d3b-94a9-413c-d1a91417ef53",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "fecha_proceso": {
+              "value": {
+                "value": "@variables('v_fecha_proceso')",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "id_ejecucion": {
+              "value": {
+                "value": "@variables('v_id_ejecucion')",
+                "type": "Expression"
+              },
+              "type": "string"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 120,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "nb_test_calidad",
+        "dependsOn": [
+          {
+            "activity": "nb_gold_agregados",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "EXEC dbo.sp_log_actividad\n    '@{variables('v_id_ejecucion')}',\n    'nb_test_calidad',\n    @{json(activity('nb_test_calidad').output.result.exitValue).filas_leidas},\n    @{json(activity('nb_test_calidad').output.result.exitValue).filas_escritas},\n    @{json(activity('nb_test_calidad').output.result.exitValue).filas_cuarentena},\n    '@{replace(activity('nb_test_calidad').output.result.exitValue, '''', '''''')}'",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Log_test",
+        "dependsOn": [
+          {
+            "activity": "nb_test_calidad",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "fecha_proceso": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "fecha_inicio_backfill": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "id_orquestacion": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "simular_fallo": {
+        "type": "bool",
+        "defaultValue": false
+      }
+    },
+    "variables": {
+      "v_fecha_proceso": {
+        "type": "String"
+      },
+      "v_id_ejecucion": {
+        "type": "String"
+      }
+    }
+  }
+}

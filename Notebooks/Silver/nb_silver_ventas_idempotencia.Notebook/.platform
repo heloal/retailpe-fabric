@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "nb_silver_ventas_idempotencia"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "e71ce87f-f888-86c7-4510-2f31f4811a18"
+  }
+}

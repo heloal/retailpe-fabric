@@ -1,0 +1,245 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "GetMetadata",
+        "typeProperties": {
+          "datasetSettings": {
+            "type": "Binary",
+            "typeProperties": {
+              "location": {
+                "type": "LakehouseLocation",
+                "folderPath": "entrada"
+              }
+            },
+            "linkedService": {
+              "name": "lh_bronze",
+              "properties": {
+                "type": "Lakehouse",
+                "typeProperties": {
+                  "artifactId": "d7cfbaf8-11fb-baa7-413c-a19aade212a5",
+                  "workspaceId": "00000000-0000-0000-0000-000000000000",
+                  "rootFolder": "Files"
+                },
+                "annotations": []
+              }
+            },
+            "annotations": []
+          },
+          "fieldList": [
+            "childItems"
+          ],
+          "storeSettings": {
+            "type": "LakehouseReadSettings",
+            "recursive": true
+          },
+          "formatSettings": {
+            "type": "BinaryReadSettings"
+          }
+        },
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Listar_Archivos",
+        "dependsOn": []
+      },
+      {
+        "type": "Filter",
+        "typeProperties": {
+          "items": {
+            "value": "@activity('Listar_Archivos').output.childItems",
+            "type": "Expression"
+          },
+          "condition": {
+            "value": "@and(equals(item().type, 'File'), and(startswith(item().name, 'CLIENTES_'), endswith(item().name, '.txt')))",
+            "type": "Expression"
+          }
+        },
+        "name": "Filtrar_Clientes",
+        "dependsOn": [
+          {
+            "activity": "Listar_Archivos",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "ForEach",
+        "typeProperties": {
+          "isSequential": true,
+          "items": {
+            "value": "@activity('Filtrar_Clientes').output.Value",
+            "type": "Expression"
+          },
+          "activities": [
+            {
+              "type": "SetVariable",
+              "typeProperties": {
+                "variableName": "v_fecha_texto",
+                "value": {
+                  "value": "@substring(item().name, add(indexOf(item().name, '_'), 1), 8)",
+                  "type": "Expression"
+                }
+              },
+              "name": "Set_FechaTexto",
+              "dependsOn": []
+            },
+            {
+              "type": "SetVariable",
+              "typeProperties": {
+                "variableName": "v_fecha_archivo",
+                "value": {
+                  "value": "@formatDateTime(concat(substring(variables('v_fecha_texto'), 0, 4), '-', substring(variables('v_fecha_texto'), 4, 2), '-', substring(variables('v_fecha_texto'), 6, 2)), 'yyyy-MM-dd')",
+                  "type": "Expression"
+                }
+              },
+              "name": "Set_FechaArchivo",
+              "dependsOn": [
+                {
+                  "activity": "Set_FechaTexto",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Copy",
+              "typeProperties": {
+                "source": {
+                  "type": "DelimitedTextSource",
+                  "formatSettings": {
+                    "type": "DelimitedTextReadSettings"
+                  },
+                  "additionalColumns": [
+                    {
+                      "name": "fecha_archivo",
+                      "value": {
+                        "value": "@variables('v_fecha_archivo')",
+                        "type": "Expression"
+                      }
+                    },
+                    {
+                      "name": "nombre_archivo",
+                      "value": {
+                        "value": "@item().name",
+                        "type": "Expression"
+                      }
+                    }
+                  ],
+                  "storeSettings": {
+                    "type": "LakehouseReadSettings",
+                    "recursive": false
+                  },
+                  "datasetSettings": {
+                    "type": "DelimitedText",
+                    "typeProperties": {
+                      "location": {
+                        "type": "LakehouseLocation",
+                        "folderPath": "entrada",
+                        "fileName": {
+                          "value": "@item().name",
+                          "type": "Expression"
+                        }
+                      },
+                      "columnDelimiter": "|",
+                      "quoteChar": "\"",
+                      "escapeChar": "\\",
+                      "firstRowAsHeader": true
+                    },
+                    "schema": [],
+                    "linkedService": {
+                      "name": "lh_bronze",
+                      "properties": {
+                        "type": "Lakehouse",
+                        "typeProperties": {
+                          "artifactId": "d7cfbaf8-11fb-baa7-413c-a19aade212a5",
+                          "workspaceId": "00000000-0000-0000-0000-000000000000",
+                          "rootFolder": "Files"
+                        },
+                        "annotations": []
+                      }
+                    },
+                    "annotations": []
+                  }
+                },
+                "sink": {
+                  "type": "LakehouseTableSink",
+                  "tableActionOption": "Append",
+                  "datasetSettings": {
+                    "type": "LakehouseTable",
+                    "typeProperties": {
+                      "table": "bronze_clientes_por_archivo"
+                    },
+                    "schema": [],
+                    "linkedService": {
+                      "name": "lh_bronze",
+                      "properties": {
+                        "type": "Lakehouse",
+                        "typeProperties": {
+                          "artifactId": "d7cfbaf8-11fb-baa7-413c-a19aade212a5",
+                          "workspaceId": "00000000-0000-0000-0000-000000000000",
+                          "rootFolder": "Tables"
+                        },
+                        "annotations": []
+                      }
+                    },
+                    "annotations": []
+                  }
+                },
+                "translator": {
+                  "type": "TabularTranslator",
+                  "typeConversion": true,
+                  "typeConversionSettings": {
+                    "allowDataTruncation": true,
+                    "treatBooleanAsNumber": false
+                  }
+                },
+                "enableStaging": false
+              },
+              "policy": {
+                "timeout": "0.01:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Copiar_Archivo",
+              "dependsOn": [
+                {
+                  "activity": "Set_FechaArchivo",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "name": "Por_Cada_Archivo",
+        "dependsOn": [
+          {
+            "activity": "Filtrar_Clientes",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ],
+    "variables": {
+      "v_fecha_texto": {
+        "type": "String"
+      },
+      "v_fecha_archivo": {
+        "type": "String"
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "admin_copiar_datos_a_alumnos"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "93353125-10ff-b6f5-4f63-be59edbe817b"
+  }
+}

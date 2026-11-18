@@ -1,0 +1,43 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": "UPDATE control_ingestas SET activo = 'NO' WHERE id_conexion = 'CN002'",
+              "type": "NonQuery"
+            },
+            {
+              "text": "SELECT id_ingesta, objeto_origen, activo FROM control_ingestas",
+              "type": "Query"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_control",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "3b83557a-ed61-a5a3-45d2-69f96e2d627d",
+              "endpoint": "rx52pupyly3eldrxekpdazs3tm-zwe2rp3qoplu7oavvxuy2w3nim.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Api_NO",
+        "dependsOn": []
+      }
+    ]
+  }
+}
