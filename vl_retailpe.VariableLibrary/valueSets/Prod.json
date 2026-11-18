@@ -1,0 +1,14 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/variableLibrary/definition/valueSet/1.0.0/schema.json",
+  "name": "Prod",
+  "variableOverrides": [
+    {
+      "name": "pct_max_tienda_desconocida",
+      "value": 3
+    },
+    {
+      "name": "dias_frescura",
+      "value": 6
+    }
+  ]
+}

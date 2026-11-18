@@ -74,6 +74,19 @@ dias_frescura = 3
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# CELL ********************
+
+vl = notebookutils.variableLibrary.getLibrary("vl_retailpe")
+pct_max_tienda_desconocida = vl.pct_max_tienda_desconocida
+dias_frescura= vl.dias_frescura
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # MARKDOWN ********************
 
 # ## Paso 0 - Configuracion y "mini framework" de pruebas

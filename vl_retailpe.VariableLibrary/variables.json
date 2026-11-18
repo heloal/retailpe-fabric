@@ -1,0 +1,17 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/variableLibrary/definition/variables/1.0.0/schema.json",
+  "variables": [
+    {
+      "name": "pct_max_tienda_desconocida",
+      "note": "",
+      "type": "Number",
+      "value": 5
+    },
+    {
+      "name": "dias_frescura",
+      "note": "",
+      "type": "Integer",
+      "value": 3
+    }
+  ]
+}
